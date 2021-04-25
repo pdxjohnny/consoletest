@@ -46,7 +46,7 @@ async def run_commands(
     stdout: Union[IO] = None,
     ignore_errors: bool = False,
     daemon: bool = False,
-    alternate_runners: Tuple = None
+    alternate_runners: Tuple = None,
 ):
     proc = None
     procs = []

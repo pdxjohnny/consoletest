@@ -192,6 +192,8 @@ class ActivateVirtualEnvCommand(ConsoletestCommand):
 
 # TODO DFFML move to dffml
 ActivateVirtualEnvCommand.register_post_activate(prepend_dffml_to_path)
+
+
 def prepend_dffml_to_path(self, ctx):
     # Prepend a dffml command to the path to ensure the correct
     # version of dffml always runs
@@ -357,7 +359,9 @@ class CreateVirtualEnvCommand(ConsoleCommand):
     def check(cls, cmd):
         # Handle virtualenv creation
         if (
-            "-m" in cmd and "venv" in cmd and cmd[cmd.index("-m") + 1] == "venv"
+            "-m" in cmd
+            and "venv" in cmd
+            and cmd[cmd.index("-m") + 1] == "venv"
         ) or (cmd[:2] == ["conda", "create"]):
             return cls(cmd[-1])
 

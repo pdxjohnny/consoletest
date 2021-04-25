@@ -6,11 +6,12 @@ import sys
 import time
 import asyncio
 import traceback
+import functools
 import contextlib
-from typing import Dict, Any
-
+from typing import List, Dict, Any
 
 from .runner import run_nodes
+from .consoletest import Consoletest
 
 
 class BaseConsoleTestBuilder:
@@ -57,6 +58,46 @@ class BaseConsoleTestBuilder:
             local_variables = {}
             exec(consoletest_test_setup, local_variables, local_variables)
             self.consoletest_test_setup = local_variables["setup"]
+
+        # TODO Use entrypoint config values for commands and default_commands
+        self.consoletest = Consoletest()
+
+        # Monkey patch the literalinclude and code-block directives to add new options
+        # to them specific to consoletest.
+        def LiteralInclude_run(func):
+            @functools.wraps(func)
+            def wrapper(self) -> List[Node]:
+                return [
+                    self.consoletest.literalinclude_to_dict(self.content, self.options, func(self)[0])
+                ]
+
+            return wrapper
+
+
+        def CodeBlock_run(func):
+            @functools.wraps(func)
+            def wrapper(self) -> List[Node]:
+                return [
+                    self.consoletest.code_block_to_dict(self.content, self.options, node=func(self)[0])
+                ]
+
+            return wrapper
+
+        LiteralInclude.run = LiteralInclude_run(LiteralInclude.run)
+        LiteralInclude.option_spec.update(
+            {
+                key: getattr(directives, value)
+                for key, value in Consoletest.LITERALINCLUDE_OPTION_SPEC.items()
+            }
+        )
+
+        CodeBlock.run = CodeBlock_run(CodeBlock.run)
+        CodeBlock.option_spec.update(
+            {
+                key: getattr(directives, value)
+                for key, value in Consoletest.CODE_BLOCK_OPTION_SPEC.items()
+            }
+        )
 
     def finish(self) -> None:
         # write executive summary
@@ -140,6 +181,8 @@ class BaseConsoleTestBuilder:
         print()
 
 
+# Try to override the code-block directive's run method so we can pick up the
+# flags we've added if docutils and sphinx are installed
 with contextlib.suppress(ModuleNotFoundError):
     from docutils import nodes
     from docutils.nodes import Node
@@ -148,6 +191,7 @@ with contextlib.suppress(ModuleNotFoundError):
     import sphinx
     from sphinx.locale import __
     from sphinx.ext.doctest import DocTestBuilder
+    from sphinx.directives.code import LiteralInclude, CodeBlock
 
     class ConsoleTestBuilder(BaseConsoleTestBuilder, DocTestBuilder):
         epilog = __(
@@ -161,4 +205,8 @@ def setup(app: "Sphinx") -> Dict[str, Any]:
     app.add_config_value("consoletest_root", "", False)
     app.add_config_value("consoletest_docs", "", False)
     app.add_config_value("consoletest_test_setup", "", False)
+    # TODO Add list config value for strings in entrypoint format for
+    # Consoletest.commands.
+    # TODO Add config value for string in entrypoint format for
+    # Consoletest.default_command.
     return {"version": "0.0.1", "parallel_read_safe": True}

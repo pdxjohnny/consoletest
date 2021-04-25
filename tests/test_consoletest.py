@@ -149,19 +149,19 @@ class TestPipInstallCommand(unittest.TestCase):
         PipInstallCommand.register_fixup(pip_install_command_fixup_dffml)
         self.assertListEqual(
             PipInstallCommand(
-            [
-                "python",
-                "-m",
-                "pip",
-                "install",
-                "-U",
-                "dffml",
-                "-e",
-                "dffml-model-scikit",
-                "shouldi",
-                "aiohttp",
-            ]
-        ).fixup({}),
+                [
+                    "python",
+                    "-m",
+                    "pip",
+                    "install",
+                    "-U",
+                    "dffml",
+                    "-e",
+                    "dffml-model-scikit",
+                    "shouldi",
+                    "aiohttp",
+                ]
+            ).fixup({}),
             [
                 "python",
                 "-m",
