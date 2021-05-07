@@ -1,0 +1,8 @@
+[consoletest.command]
+cd = consoletest.commands:CDCommand
+console = consoletest.commands:ConsoleCommand
+venv = consoletest.commands:CreateVirtualEnvCommand
+venv.activate = consoletest.commands:ActivateVirtualEnvCommand
+pip.install = consoletest.commands:PipInstallCommand
+docker.run = consoletest.commands:DockerRunCommand
+http.server = consoletest.commands:SimpleHTTPServerCommand

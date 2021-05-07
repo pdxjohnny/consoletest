@@ -1,5 +1,6 @@
 import os
 import io
+import sys
 import shutil
 import pathlib
 import contextlib
@@ -47,3 +48,79 @@ def copyfile(
                 outfile.write(line)
             elif i > lines[1]:
                 break
+
+
+MAKE_POLL_UNTIL_TEMPLATE = """
+import sys
+{imports}
+
+func = lambda stdout: {func}
+
+sys.exit(int(not func(sys.stdin.buffer.read())))
+"""
+
+
+def call_compare_output(func, stdout, *, imports: Optional[str] = None):
+    with tempfile.NamedTemporaryFile() as fileobj, tempfile.NamedTemporaryFile() as stdin:
+        fileobj.write(
+            MAKE_POLL_UNTIL_TEMPLATE.format(
+                func=func,
+                imports="" if imports is None else "import " + imports,
+            ).encode()
+        )
+        fileobj.seek(0)
+        stdin.write(stdout.encode() if isinstance(stdout, str) else stdout)
+        stdin.seek(0)
+        return_code = subprocess.call(
+            [sys.executable, fileobj.name], stdin=stdin
+        )
+        return bool(return_code == 0)
+
+
+MAKE_REPLACE_UNTIL_TEMPLATE = """
+import sys
+import json
+import pathlib
+
+cmds = json.loads(pathlib.Path(sys.argv[1]).read_text())
+ctx = json.loads(pathlib.Path(sys.argv[2]).read_text())
+
+{func}
+
+print(json.dumps(cmds))
+"""
+
+
+def call_replace(
+    func: str, cmds: List[List[str]], ctx: Dict[str, Any]
+) -> List[List[str]]:
+    with contextlib.ExitStack() as stack:
+        # Write out Python script
+        python_fileobj = stack.enter_context(tempfile.NamedTemporaryFile())
+        python_fileobj.write(
+            MAKE_REPLACE_UNTIL_TEMPLATE.format(func=func).encode()
+        )
+        python_fileobj.seek(0)
+        # Write out command
+        cmd_fileobj = stack.enter_context(tempfile.NamedTemporaryFile())
+        cmd_fileobj.write(json.dumps(cmds).encode())
+        cmd_fileobj.seek(0)
+        # Write out context
+        ctx_fileobj = stack.enter_context(tempfile.NamedTemporaryFile())
+        ctx_serializable = ctx.copy()
+        for remove in list(ctx["no_serialize"]) + ["no_serialize"]:
+            if remove in ctx_serializable:
+                del ctx_serializable[remove]
+        ctx_fileobj.write(json.dumps(ctx_serializable).encode())
+        ctx_fileobj.seek(0)
+        # Python file modifies command and json.dumps result to stdout
+        return json.loads(
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    python_fileobj.name,
+                    cmd_fileobj.name,
+                    ctx_fileobj.name,
+                ],
+            )
+        )

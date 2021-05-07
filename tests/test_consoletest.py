@@ -12,7 +12,7 @@ import importlib.util
 from consoletest.commands import *
 from consoletest.parser import parse_nodes, Node
 from consoletest.runner import run_nodes
-from consoletest.util import nodes_to_test
+from consoletest.consoletest import nodes_to_test
 
 
 # Root of source tree
