@@ -7,6 +7,7 @@ import inspect
 import pathlib
 import tempfile
 import contextlib
+import dataclasses
 from typing import (
     Any,
     Dict,
@@ -22,12 +23,19 @@ from .parser import Node, parse_commands
 from .commands import *
 
 
-class Consoletest:
-    LITERALINCLUDE_OPTION_SPEC = {
+@dataclasses.dataclass
+class ConsoleTestConfig:
+    """
+    This config object is used to provide command helpers, parsers, etc. which
+    need to be present for the full life cycle of parse through execution.
+    """
+    commands: Optional[List[ConsoletestCommand]] = None
+    default_command: Optional[ConsoletestCommand] = None
+    literalinclude_option_spec: Dict[str, str] = field(default_factory=lambda: {
         "filepath": "unchanged_required",
         "test": "flag",
-    }
-    CODE_BLOCK_OPTION_SPEC = {
+    })
+    code_block_option_spec: Dict[str, str] = field(default_factory=lambda: {
         "filepath": "unchanged_required",
         "replace": "unchanged_required",
         "poll-until": "flag",
@@ -38,8 +46,11 @@ class Consoletest:
         "test": "flag",
         "stdin": "unchanged_required",
         "overwrite": "flag",
-    }
+    })
+    node_handlers: Dict[str, Callable[]]: = field(default_factory=lambda: {})
 
+
+class Consoletest(ConsoleTestConfig):
     def __init__(
         self,
         commands: Optional[List[ConsoletestCommand]] = None,
